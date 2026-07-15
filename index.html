@@ -388,8 +388,8 @@
         <button data-action="line-prefix" data-prefix="-# " title="Subtext (small gray text)">-# Subtext</button>
 
         <span class="group-label">Lists</span>
-        <button data-action="line-prefix" data-prefix="- " title="Bullet list">• List</button>
-        <button data-action="numbered-list" title="Numbered list">1. List</button>
+        <button data-action="line-prefix" data-prefix="- " title="Bullet list">Bullet List</button>
+        <button data-action="numbered-list" title="Numbered list">Numbered List</button>
 
         <span class="group-label">Links &amp; media</span>
         <button data-action="link" title="Masked link (bots/embeds only)">Link</button>
@@ -769,15 +769,22 @@ document.getElementById('toolbar').addEventListener('click', handleToolbarClick)
 document.getElementById('ansiFgRow').addEventListener('click', handleToolbarClick);
 document.getElementById('ansiBgRow').addEventListener('click', handleToolbarClick);
 
+// If a selection starts with a line-level marker (header, list, quote, subtext),
+// pull it out so wrapping bold/italic/etc. doesn't wrap the marker itself.
+const LINE_PREFIX_RE = /^(#{1,3}[ \t]+|-#[ \t]+|>[ \t]+|[-*][ \t]+|\d+\.[ \t]+)/;
+
 function wrapSelection(before, after) {
   const start = editor.selectionStart;
   const end = editor.selectionEnd;
   const value = editor.value;
   const selected = value.slice(start, end) || 'text';
-  const newValue = value.slice(0, start) + before + selected + after + value.slice(end);
+  const prefixMatch = selected.match(LINE_PREFIX_RE);
+  const prefix = prefixMatch ? prefixMatch[0] : '';
+  const rest = selected.slice(prefix.length);
+  const newValue = value.slice(0, start) + prefix + before + rest + after + value.slice(end);
   editor.value = newValue;
-  editor.selectionStart = start + before.length;
-  editor.selectionEnd = start + before.length + selected.length;
+  editor.selectionStart = start + prefix.length + before.length;
+  editor.selectionEnd = start + prefix.length + before.length + rest.length;
   editor.focus();
 }
 
