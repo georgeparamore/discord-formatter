@@ -96,6 +96,31 @@
     margin-top: 8px;
     margin-bottom: -2px;
   }
+  .swatch-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .swatch-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    width: 70px;
+    flex-shrink: 0;
+  }
+  button.swatch {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button.swatch:hover {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
   textarea#editor {
     width: 100%;
     min-height: 320px;
@@ -297,10 +322,42 @@
         <button data-action="line-prefix" data-prefix="### " title="Header 3">### H3</button>
         <button data-action="line-prefix" data-prefix="-# " title="Subtext (small gray text)">-# Subtext</button>
 
-        <span class="group-label">Lists &amp; links</span>
+        <span class="group-label">Lists</span>
         <button data-action="line-prefix" data-prefix="- " title="Bullet list">• List</button>
         <button data-action="numbered-list" title="Numbered list">1. List</button>
+
+        <span class="group-label">Links &amp; media</span>
         <button data-action="link" title="Masked link (bots/embeds only)">Link</button>
+        <button data-action="suppress-embed" title="Wrap a URL in &lt;&gt; to stop Discord from showing a preview embed">Suppress Embed</button>
+        <button data-action="media" data-kind="image" title="Insert a placeholder direct image link on its own line (auto-embeds when posted)">Image URL</button>
+        <button data-action="media" data-kind="video" title="Insert a placeholder direct video link on its own line (auto-embeds when posted)">Video URL</button>
+
+        <span class="group-label">Color (ANSI code block, desktop/web only)</span>
+        <button data-action="ansi-block" title="Insert a sample ANSI color block">Insert Color Block</button>
+        <button data-action="ansi-mod" data-code="1" title="Bold (ANSI)"><b>B</b></button>
+        <button data-action="ansi-mod" data-code="4" title="Underline (ANSI)"><u>U</u></button>
+      </div>
+      <div class="swatch-row" id="ansiFgRow">
+        <span class="swatch-label">Text color</span>
+        <button class="swatch" data-action="ansi-fg" data-code="30" title="Gray" style="background:#4f545c"></button>
+        <button class="swatch" data-action="ansi-fg" data-code="31" title="Red" style="background:#dc322f"></button>
+        <button class="swatch" data-action="ansi-fg" data-code="32" title="Green" style="background:#859900"></button>
+        <button class="swatch" data-action="ansi-fg" data-code="33" title="Yellow" style="background:#b58900"></button>
+        <button class="swatch" data-action="ansi-fg" data-code="34" title="Blue" style="background:#268bd2"></button>
+        <button class="swatch" data-action="ansi-fg" data-code="35" title="Pink" style="background:#d33682"></button>
+        <button class="swatch" data-action="ansi-fg" data-code="36" title="Cyan" style="background:#2aa198"></button>
+        <button class="swatch" data-action="ansi-fg" data-code="37" title="White" style="background:#ffffff"></button>
+      </div>
+      <div class="swatch-row" id="ansiBgRow">
+        <span class="swatch-label">Highlight</span>
+        <button class="swatch" data-action="ansi-bg" data-code="40" title="Dark blue background" style="background:#002b36"></button>
+        <button class="swatch" data-action="ansi-bg" data-code="41" title="Orange background" style="background:#cb4b16"></button>
+        <button class="swatch" data-action="ansi-bg" data-code="42" title="Marble blue background" style="background:#586e75"></button>
+        <button class="swatch" data-action="ansi-bg" data-code="43" title="Greyish turquoise background" style="background:#657b83"></button>
+        <button class="swatch" data-action="ansi-bg" data-code="44" title="Gray background" style="background:#839496"></button>
+        <button class="swatch" data-action="ansi-bg" data-code="45" title="Indigo background" style="background:#6c71c4"></button>
+        <button class="swatch" data-action="ansi-bg" data-code="46" title="Light gray background" style="background:#93a1a1"></button>
+        <button class="swatch" data-action="ansi-bg" data-code="47" title="White background" style="background:#fdf6e3"></button>
       </div>
       <textarea id="editor" placeholder="Type your announcement here...">**Server Update — v1.2**
 We just shipped some new stuff. Here's what changed:
@@ -320,6 +377,8 @@ We just shipped some new stuff. Here's what changed:
       <div class="hint">
         Select text, then click a button to wrap it. Line/block buttons apply to whichever lines your cursor or selection touches.
         <br><code>Quote All</code> and masked <code>[links](url)</code> only render specially for bots/webhooks or inside embeds — in a normal user message Discord shows them as plain text.
+        <br>ANSI colors only work inside a <code>```ansi</code> code block, and only render on Discord's <strong>desktop and web</strong> apps — mobile shows the raw escape codes as plain text.
+        <br>Discord has no image/video markdown — a bare direct link on its own line auto-embeds when posted (that's what <code>Image URL</code> / <code>Video URL</code> insert); <code>Suppress Embed</code> wraps a URL in <code>&lt;&gt;</code> to stop that preview from showing.
       </div>
     </div>
 
@@ -362,6 +421,51 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;');
 }
 
+// Discord's ANSI code block palette (desktop/web only) as an SGR code -> hex map.
+const ANSI_FG = {
+  30: '#4f545c', 31: '#dc322f', 32: '#859900', 33: '#b58900',
+  34: '#268bd2', 35: '#d33682', 36: '#2aa198', 37: '#ffffff',
+};
+const ANSI_BG = {
+  40: '#002b36', 41: '#cb4b16', 42: '#586e75', 43: '#657b83',
+  44: '#839496', 45: '#6c71c4', 46: '#93a1a1', 47: '#fdf6e3',
+};
+
+function ansiToHtml(code) {
+  let result = '';
+  let lastIndex = 0;
+  let fg = null, bg = null, bold = false, underline = false;
+  const re = /\x1b\[([0-9;]*)m/g;
+  let match;
+
+  function flush(chunk) {
+    if (!chunk) return;
+    const styles = [];
+    if (fg) styles.push(`color:${fg}`);
+    if (bg) styles.push(`background:${bg}`);
+    if (bold) styles.push('font-weight:700');
+    if (underline) styles.push('text-decoration:underline');
+    const escaped = escapeHtml(chunk);
+    result += styles.length ? `<span style="${styles.join(';')}">${escaped}</span>` : escaped;
+  }
+
+  while ((match = re.exec(code)) !== null) {
+    flush(code.slice(lastIndex, match.index));
+    lastIndex = re.lastIndex;
+    const codes = match[1].split(';').filter(Boolean).map(Number);
+    if (codes.length === 0) { fg = null; bg = null; bold = false; underline = false; }
+    for (const c of codes) {
+      if (c === 0) { fg = null; bg = null; bold = false; underline = false; }
+      else if (c === 1) bold = true;
+      else if (c === 4) underline = true;
+      else if (ANSI_FG[c]) fg = ANSI_FG[c];
+      else if (ANSI_BG[c]) bg = ANSI_BG[c];
+    }
+  }
+  flush(code.slice(lastIndex));
+  return result;
+}
+
 // Render an approximation of Discord markdown to HTML for the preview pane.
 function renderDiscordMarkdown(raw) {
   const codeBlocks = [];
@@ -369,7 +473,8 @@ function renderDiscordMarkdown(raw) {
 
   let text = raw.replace(/```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
     const idx = codeBlocks.length;
-    codeBlocks.push(escapeHtml(code.replace(/\n$/, '')));
+    const cleanCode = code.replace(/\n$/, '');
+    codeBlocks.push(lang.toLowerCase() === 'ansi' ? ansiToHtml(cleanCode) : escapeHtml(cleanCode));
     return ` CODEBLOCK${idx} `;
   });
 
@@ -554,7 +659,7 @@ editor.addEventListener('keydown', (e) => {
 });
 
 // Toolbar logic
-document.getElementById('toolbar').addEventListener('click', (e) => {
+function handleToolbarClick(e) {
   const btn = e.target.closest('button');
   if (!btn) return;
   const action = btn.dataset.action;
@@ -572,9 +677,21 @@ document.getElementById('toolbar').addEventListener('click', (e) => {
     applyNumberedList();
   } else if (action === 'link') {
     insertLink();
+  } else if (action === 'suppress-embed') {
+    wrapSelection('<', '>');
+  } else if (action === 'media') {
+    insertMediaPlaceholder(btn.dataset.kind);
+  } else if (action === 'ansi-fg' || action === 'ansi-bg' || action === 'ansi-mod') {
+    wrapAnsi(btn.dataset.code);
+  } else if (action === 'ansi-block') {
+    insertAnsiBlock();
   }
   updatePreview();
-});
+}
+
+document.getElementById('toolbar').addEventListener('click', handleToolbarClick);
+document.getElementById('ansiFgRow').addEventListener('click', handleToolbarClick);
+document.getElementById('ansiBgRow').addEventListener('click', handleToolbarClick);
 
 function wrapSelection(before, after) {
   const start = editor.selectionStart;
@@ -622,6 +739,46 @@ function applyNumberedList() {
   const newBlock = block.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n');
   editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
   editor.selectionStart = editor.selectionEnd = lineStart + newBlock.length;
+  editor.focus();
+}
+
+function wrapAnsi(code) {
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const value = editor.value;
+  const selected = value.slice(start, end) || 'text';
+  const before = `\x1b[${code}m`;
+  const after = '\x1b[0m';
+  editor.value = value.slice(0, start) + before + selected + after + value.slice(end);
+  editor.selectionStart = start + before.length;
+  editor.selectionEnd = start + before.length + selected.length;
+  editor.focus();
+}
+
+function insertAnsiBlock() {
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const value = editor.value;
+  const sample = '```ansi\n\x1b[31mRed\x1b[0m \x1b[32mGreen\x1b[0m \x1b[33mYellow\x1b[0m '
+    + '\x1b[34mBlue\x1b[0m \x1b[35mPink\x1b[0m \x1b[36mCyan\x1b[0m\n'
+    + '\x1b[1;37mBold white\x1b[0m \x1b[4;31mUnderlined red\x1b[0m \x1b[46mHighlighted\x1b[0m\n```';
+  editor.value = value.slice(0, start) + sample + value.slice(end);
+  editor.selectionStart = editor.selectionEnd = start + sample.length;
+  editor.focus();
+}
+
+function insertMediaPlaceholder(kind) {
+  const url = kind === 'video' ? 'https://example.com/video.mp4' : 'https://example.com/image.png';
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const value = editor.value;
+  const needsNewlineBefore = start > 0 && value[start - 1] !== '\n';
+  const needsNewlineAfter = end < value.length && value[end] !== '\n';
+  const insertion = (needsNewlineBefore ? '\n' : '') + url + (needsNewlineAfter ? '\n' : '');
+  editor.value = value.slice(0, start) + insertion + value.slice(end);
+  const urlStart = start + (needsNewlineBefore ? 1 : 0);
+  editor.selectionStart = urlStart;
+  editor.selectionEnd = urlStart + url.length;
   editor.focus();
 }
 
