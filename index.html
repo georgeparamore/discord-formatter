@@ -798,10 +798,17 @@ function getSelectedLineRange() {
   return { lineStart, lineEnd, value };
 }
 
+const HEADER_MARKER_RE = /^#{1,3}[ \t]+/;
+
 function applyLinePrefix(prefix) {
   const { lineStart, lineEnd, value } = getSelectedLineRange();
   const block = value.slice(lineStart, lineEnd);
-  const newBlock = block.split('\n').map(l => prefix + l).join('\n');
+  // Switching between Header 1/2/3 replaces the existing header marker instead of stacking.
+  const isHeaderPrefix = /^#{1,3}[ \t]+$/.test(prefix);
+  const newBlock = block.split('\n').map(l => {
+    const base = isHeaderPrefix ? l.replace(HEADER_MARKER_RE, '') : l;
+    return prefix + base;
+  }).join('\n');
   editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
   editor.selectionStart = editor.selectionEnd = lineStart + newBlock.length;
   editor.focus();
