@@ -329,11 +329,8 @@
         <span class="group-label">Links &amp; media</span>
         <button data-action="link" title="Masked link (bots/embeds only)">Link</button>
         <button data-action="suppress-embed" title="Wrap a URL in &lt;&gt; to stop Discord from showing a preview embed">Suppress Embed</button>
-        <button data-action="media" data-kind="image" title="Insert a placeholder direct image link on its own line (auto-embeds when posted)">Image URL</button>
-        <button data-action="media" data-kind="video" title="Insert a placeholder direct video link on its own line (auto-embeds when posted)">Video URL</button>
 
-        <span class="group-label">Color (ANSI code block, desktop/web only)</span>
-        <button data-action="ansi-block" title="Insert a sample ANSI color block">Insert Color Block</button>
+        <span class="group-label">Color (ANSI, desktop/web only)</span>
         <button data-action="ansi-mod" data-code="1" title="Bold (ANSI)"><b>B</b></button>
         <button data-action="ansi-mod" data-code="4" title="Underline (ANSI)"><u>U</u></button>
       </div>
@@ -378,7 +375,7 @@ We just shipped some new stuff. Here's what changed:
         Select text, then click a button to wrap it. Line/block buttons apply to whichever lines your cursor or selection touches.
         <br><code>Quote All</code> and masked <code>[links](url)</code> only render specially for bots/webhooks or inside embeds — in a normal user message Discord shows them as plain text.
         <br>ANSI colors only work inside a <code>```ansi</code> code block, and only render on Discord's <strong>desktop and web</strong> apps — mobile shows the raw escape codes as plain text.
-        <br>Discord has no image/video markdown — a bare direct link on its own line auto-embeds when posted (that's what <code>Image URL</code> / <code>Video URL</code> insert); <code>Suppress Embed</code> wraps a URL in <code>&lt;&gt;</code> to stop that preview from showing.
+        <br>Discord has no image/video markdown — pasting a bare direct media link on its own line auto-embeds it when posted. <code>Suppress Embed</code> wraps a URL in <code>&lt;&gt;</code> to stop that preview from showing.
       </div>
     </div>
 
@@ -679,12 +676,8 @@ function handleToolbarClick(e) {
     insertLink();
   } else if (action === 'suppress-embed') {
     wrapSelection('<', '>');
-  } else if (action === 'media') {
-    insertMediaPlaceholder(btn.dataset.kind);
   } else if (action === 'ansi-fg' || action === 'ansi-bg' || action === 'ansi-mod') {
     wrapAnsi(btn.dataset.code);
-  } else if (action === 'ansi-block') {
-    insertAnsiBlock();
   }
   updatePreview();
 }
@@ -742,6 +735,20 @@ function applyNumberedList() {
   editor.focus();
 }
 
+// Whether `pos` sits inside the content of an existing ```ansi fenced block.
+function isInsideAnsiBlock(pos) {
+  const value = editor.value;
+  const openRe = /```ansi\n/g;
+  let match;
+  while ((match = openRe.exec(value)) !== null) {
+    const contentStart = match.index + match[0].length;
+    const closeIdx = value.indexOf('```', contentStart);
+    const contentEnd = closeIdx === -1 ? value.length : closeIdx;
+    if (pos >= contentStart && pos <= contentEnd) return true;
+  }
+  return false;
+}
+
 function wrapAnsi(code) {
   const start = editor.selectionStart;
   const end = editor.selectionEnd;
@@ -749,36 +756,23 @@ function wrapAnsi(code) {
   const selected = value.slice(start, end) || 'text';
   const before = `\x1b[${code}m`;
   const after = '\x1b[0m';
-  editor.value = value.slice(0, start) + before + selected + after + value.slice(end);
-  editor.selectionStart = start + before.length;
-  editor.selectionEnd = start + before.length + selected.length;
-  editor.focus();
-}
 
-function insertAnsiBlock() {
-  const start = editor.selectionStart;
-  const end = editor.selectionEnd;
-  const value = editor.value;
-  const sample = '```ansi\n\x1b[31mRed\x1b[0m \x1b[32mGreen\x1b[0m \x1b[33mYellow\x1b[0m '
-    + '\x1b[34mBlue\x1b[0m \x1b[35mPink\x1b[0m \x1b[36mCyan\x1b[0m\n'
-    + '\x1b[1;37mBold white\x1b[0m \x1b[4;31mUnderlined red\x1b[0m \x1b[46mHighlighted\x1b[0m\n```';
-  editor.value = value.slice(0, start) + sample + value.slice(end);
-  editor.selectionStart = editor.selectionEnd = start + sample.length;
-  editor.focus();
-}
-
-function insertMediaPlaceholder(kind) {
-  const url = kind === 'video' ? 'https://example.com/video.mp4' : 'https://example.com/image.png';
-  const start = editor.selectionStart;
-  const end = editor.selectionEnd;
-  const value = editor.value;
-  const needsNewlineBefore = start > 0 && value[start - 1] !== '\n';
-  const needsNewlineAfter = end < value.length && value[end] !== '\n';
-  const insertion = (needsNewlineBefore ? '\n' : '') + url + (needsNewlineAfter ? '\n' : '');
-  editor.value = value.slice(0, start) + insertion + value.slice(end);
-  const urlStart = start + (needsNewlineBefore ? 1 : 0);
-  editor.selectionStart = urlStart;
-  editor.selectionEnd = urlStart + url.length;
+  if (isInsideAnsiBlock(start)) {
+    editor.value = value.slice(0, start) + before + selected + after + value.slice(end);
+    editor.selectionStart = start + before.length;
+    editor.selectionEnd = start + before.length + selected.length;
+  } else {
+    // Not inside an ANSI block yet — wrap the text in one so the color actually renders.
+    const fenceOpen = '```ansi\n';
+    const fenceClose = '\n```';
+    const needsNewlineBefore = start > 0 && value[start - 1] !== '\n';
+    const needsNewlineAfter = end < value.length && value[end] !== '\n';
+    const insertion = (needsNewlineBefore ? '\n' : '') + fenceOpen + before + selected + after + fenceClose + (needsNewlineAfter ? '\n' : '');
+    editor.value = value.slice(0, start) + insertion + value.slice(end);
+    const innerStart = start + (needsNewlineBefore ? 1 : 0) + fenceOpen.length + before.length;
+    editor.selectionStart = innerStart;
+    editor.selectionEnd = innerStart + selected.length;
+  }
   editor.focus();
 }
 
