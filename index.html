@@ -463,8 +463,8 @@ We just shipped some new stuff. Here's what changed:
   <div class="modal-box">
     <h3 id="linkModalTitle">Insert Link</h3>
     <div class="modal-field" id="linkModalTextField">
-      <label for="linkModalText">Link text</label>
-      <input type="text" id="linkModalText" placeholder="link text" />
+      <label for="linkModalText">Link text (optional — leave blank to post the plain URL)</label>
+      <input type="text" id="linkModalText" placeholder="leave blank to just post the URL" />
     </div>
     <div class="modal-field">
       <label for="linkModalUrl">URL</label>
@@ -893,8 +893,9 @@ function confirmLinkModal() {
   if (!url) { linkModalUrl.focus(); return; }
 
   const value = editor.value;
+  const linkText = linkModalText.value.trim();
   const snippet = type === 'link'
-    ? `[${linkModalText.value.trim() || 'link text'}](${url})`
+    ? (linkText ? `[${linkText}](${url})` : url)
     : `<${url}>`;
 
   editor.value = value.slice(0, start) + snippet + value.slice(end);
