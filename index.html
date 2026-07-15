@@ -357,19 +357,36 @@
   .modal-actions button.cancel { background: transparent; border: 1px solid var(--border); color: var(--text); }
   .modal-actions button.cancel:hover { background: var(--bg-tertiary); }
   .guide {
-    margin-top: 12px;
+    margin-bottom: 14px;
     font-size: 13px;
   }
   .guide summary {
     cursor: pointer;
-    color: var(--text-muted);
+    color: var(--header);
+    font-weight: 600;
+    font-size: 15px;
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    list-style: none;
   }
-  .guide summary:hover { color: var(--text); }
+  .guide summary::-webkit-details-marker { display: none; }
+  .guide summary:hover { background: var(--accent); color: white; }
+  .guide[open] summary {
+    border-radius: 6px 6px 0 0;
+    margin-bottom: 0;
+  }
   .guide dl {
     display: grid;
     grid-template-columns: max-content 1fr;
-    gap: 4px 12px;
-    margin: 10px 0 0;
+    gap: 6px 12px;
+    margin: 0;
+    padding: 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
   }
   .guide dt {
     color: var(--header);
@@ -390,6 +407,29 @@
   <div class="layout">
     <div class="panel">
       <h2 class="panel-heading">Compose</h2>
+
+      <details class="guide">
+        <summary>What do these buttons do?</summary>
+        <dl>
+          <dt>B / i / BI</dt><dd>Bold / italic / bold+italic</dd>
+          <dt>U</dt><dd>Underline</dd>
+          <dt>S</dt><dd>Strikethrough</dd>
+          <dt>Spoiler</dt><dd>Blacks out text until clicked</dd>
+          <dt>Code</dt><dd>Inline code snippet</dd>
+          <dt>Code Block</dt><dd>Multi-line code block</dd>
+          <dt>Quote</dt><dd>Quotes just that line</dd>
+          <dt>Quote All</dt><dd>Quotes everything after it</dd>
+          <dt>Header 1 / 2 / 3</dt><dd>Large / medium / small bold heading</dd>
+          <dt>Subtext</dt><dd>Small gray note text</dd>
+          <dt>Bullet List</dt><dd>Adds a • to each line</dd>
+          <dt>Numbered List</dt><dd>Adds 1. 2. 3. and counts up</dd>
+          <dt>Link</dt><dd>Pop-up to paste a URL (and optional link text)</dd>
+          <dt>Suppress Embed</dt><dd>Stops a link from showing a preview card</dd>
+          <dt>Color swatches</dt><dd>Colors selected text/background (desktop &amp; web app only)</dd>
+          <dt>B / U (color row)</dt><dd>Bold / underline inside a colored block</dd>
+        </dl>
+      </details>
+
       <div class="toolbar" id="toolbar">
         <span class="group-label">Text style</span>
         <button data-action="wrap" data-before="**" data-after="**" title="Bold">B</button>
@@ -466,28 +506,6 @@ We just shipped some new stuff. Here's what changed:
         <br>ANSI colors only work inside a <code>```ansi</code> code block, and only render on Discord's <strong>desktop and web</strong> apps — mobile shows the raw escape codes as plain text.
         <br>Discord has no image/video markdown — pasting a bare direct media link on its own line auto-embeds it when posted. <code>Suppress Embed</code> wraps a URL in <code>&lt;&gt;</code> to stop that preview from showing.
       </div>
-
-      <details class="guide">
-        <summary>What do these buttons do?</summary>
-        <dl>
-          <dt>B / i / BI</dt><dd>Bold / italic / bold+italic</dd>
-          <dt>U</dt><dd>Underline</dd>
-          <dt>S</dt><dd>Strikethrough</dd>
-          <dt>Spoiler</dt><dd>Blacks out text until clicked</dd>
-          <dt>Code</dt><dd>Inline code snippet</dd>
-          <dt>Code Block</dt><dd>Multi-line code block</dd>
-          <dt>Quote</dt><dd>Quotes just that line</dd>
-          <dt>Quote All</dt><dd>Quotes everything after it</dd>
-          <dt>Header 1 / 2 / 3</dt><dd>Large / medium / small bold heading</dd>
-          <dt>Subtext</dt><dd>Small gray note text</dd>
-          <dt>Bullet List</dt><dd>Adds a • to each line</dd>
-          <dt>Numbered List</dt><dd>Adds 1. 2. 3. and counts up</dd>
-          <dt>Link</dt><dd>Pop-up to paste a URL (and optional link text)</dd>
-          <dt>Suppress Embed</dt><dd>Stops a link from showing a preview card</dd>
-          <dt>Color swatches</dt><dd>Colors selected text/background (desktop &amp; web app only)</dd>
-          <dt>B / U (color row)</dt><dd>Bold / underline inside a colored block</dd>
-        </dl>
-      </details>
     </div>
 
     <div class="panel">
