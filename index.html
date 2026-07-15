@@ -88,6 +88,13 @@
     color: white;
   }
   .toolbar button.wide { padding: 6px 8px; }
+  .toolbar button.header-btn {
+    font-weight: 700;
+    line-height: 1;
+  }
+  .toolbar button.header-btn.h1 { font-size: 19px; padding-top: 8px; padding-bottom: 8px; }
+  .toolbar button.header-btn.h2 { font-size: 16px; }
+  .toolbar button.header-btn.h3 { font-size: 14px; }
   .group-label {
     width: 100%;
     color: var(--text-muted);
@@ -375,9 +382,9 @@
         <span class="group-label">Blocks</span>
         <button data-action="line-prefix" data-prefix="&gt; " title="Blockquote (line)">Quote</button>
         <button data-action="whole-prefix" data-prefix="&gt;&gt;&gt; " title="Blockquote (rest of message)">Quote All</button>
-        <button data-action="line-prefix" data-prefix="# " title="Header 1"># H1</button>
-        <button data-action="line-prefix" data-prefix="## " title="Header 2">## H2</button>
-        <button data-action="line-prefix" data-prefix="### " title="Header 3">### H3</button>
+        <button class="header-btn h1" data-action="line-prefix" data-prefix="# " title="Header 1">Header 1</button>
+        <button class="header-btn h2" data-action="line-prefix" data-prefix="## " title="Header 2">Header 2</button>
+        <button class="header-btn h3" data-action="line-prefix" data-prefix="### " title="Header 3">Header 3</button>
         <button data-action="line-prefix" data-prefix="-# " title="Subtext (small gray text)">-# Subtext</button>
 
         <span class="group-label">Lists</span>
