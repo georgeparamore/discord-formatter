@@ -506,6 +506,53 @@ function updatePreview() {
 editor.addEventListener('input', updatePreview);
 authorName.addEventListener('input', updatePreview);
 
+// Continue bullet/numbered lists, quotes, and subtext onto the next line when Enter is pressed.
+editor.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.shiftKey) return;
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  if (start !== end) return;
+
+  const value = editor.value;
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+  const currentLine = value.slice(lineStart, start);
+
+  const bulletMatch = currentLine.match(/^(\s*)([-*])\s+(.*)$/);
+  const numberedMatch = currentLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
+  const quoteMatch = currentLine.match(/^(\s*)>\s+(.*)$/);
+  const subtextMatch = currentLine.match(/^(\s*)-#\s+(.*)$/);
+
+  let indent, prefix, contentSoFar;
+  if (bulletMatch) {
+    [, indent, , contentSoFar] = bulletMatch;
+    prefix = bulletMatch[2] + ' ';
+  } else if (numberedMatch) {
+    [, indent, , contentSoFar] = numberedMatch;
+    prefix = (parseInt(numberedMatch[2], 10) + 1) + '. ';
+  } else if (quoteMatch) {
+    [, indent, contentSoFar] = quoteMatch;
+    prefix = '> ';
+  } else if (subtextMatch) {
+    [, indent, contentSoFar] = subtextMatch;
+    prefix = '-# ';
+  } else {
+    return;
+  }
+
+  e.preventDefault();
+
+  if (contentSoFar.trim() === '') {
+    // Empty item: end the list instead of continuing it.
+    editor.value = value.slice(0, lineStart) + indent + value.slice(start);
+    editor.selectionStart = editor.selectionEnd = lineStart + indent.length;
+  } else {
+    const insertion = '\n' + indent + prefix;
+    editor.value = value.slice(0, start) + insertion + value.slice(end);
+    editor.selectionStart = editor.selectionEnd = start + insertion.length;
+  }
+  updatePreview();
+});
+
 // Toolbar logic
 document.getElementById('toolbar').addEventListener('click', (e) => {
   const btn = e.target.closest('button');
