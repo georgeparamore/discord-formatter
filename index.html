@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Discord Announcement Editor</title>
+<style>
+  :root {
+    --bg: #313338;
+    --bg-secondary: #2b2d31;
+    --bg-tertiary: #1e1f22;
+    --text: #dbdee1;
+    --text-muted: #949ba4;
+    --header: #f2f3f5;
+    --accent: #5865f2;
+    --accent-hover: #4752c4;
+    --border: #3f4147;
+    --link: #00a8fc;
+    --quote-bar: #4e5058;
+    --code-bg: #2b2d31;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-tertiary);
+    color: var(--text);
+    font-family: "gg sans", "Noto Sans", Whitney, Helvetica, Arial, sans-serif;
+    height: 100%;
+  }
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+  h1.title {
+    color: var(--header);
+    font-size: 22px;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .panel h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toolbar button {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .toolbar button:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .toolbar button.wide { padding: 6px 8px; }
+  .group-label {
+    width: 100%;
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-top: 8px;
+    margin-bottom: -2px;
+  }
+  textarea#editor {
+    width: 100%;
+    min-height: 320px;
+    resize: vertical;
+    background: var(--bg-secondary);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  textarea#editor:focus { outline: 1px solid var(--accent); }
+  .editor-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: center;
+  }
+  .editor-actions button {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .editor-actions button:hover { background: var(--accent-hover); }
+  .editor-actions button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .editor-actions button.secondary:hover { background: var(--bg-tertiary); }
+  #copyStatus {
+    font-size: 12px;
+    color: #23a55a;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #copyStatus.show { opacity: 1; }
+
+  /* Discord preview */
+  .discord-message {
+    display: flex;
+    gap: 14px;
+    padding: 4px 0;
+  }
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #eb459e);
+    flex-shrink: 0;
+  }
+  .msg-body { min-width: 0; flex: 1; }
+  .msg-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+  .msg-author {
+    color: var(--header);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .msg-time {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .msg-content {
+    font-size: 15px;
+    line-height: 1.375;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--text);
+  }
+  .msg-content strong { font-weight: 700; color: var(--header); }
+  .msg-content em { font-style: italic; }
+  .msg-content u { text-decoration: underline; }
+  .msg-content s { text-decoration: line-through; }
+  .msg-content code.inline {
+    background: var(--code-bg);
+    border: 1px solid #232428;
+    padding: 0.15em 0.35em;
+    border-radius: 3px;
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 0.85em;
+  }
+  .msg-content pre {
+    background: var(--code-bg);
+    border: 1px solid #232428;
+    border-radius: 4px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 0.85em;
+    margin: 4px 0;
+    white-space: pre-wrap;
+  }
+  .msg-content blockquote {
+    margin: 2px 0;
+    padding: 0 10px;
+    border-left: 4px solid var(--quote-bar);
+    color: var(--text);
+  }
+  .msg-content h1, .msg-content h2, .msg-content h3 {
+    color: var(--header);
+    margin: 6px 0 2px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .msg-content h1 { font-size: 1.5em; }
+  .msg-content h2 { font-size: 1.25em; }
+  .msg-content h3 { font-size: 1.1em; }
+  .msg-content .subtext {
+    color: var(--text-muted);
+    font-size: 0.8em;
+    display: block;
+  }
+  .msg-content ul, .msg-content ol {
+    margin: 2px 0;
+    padding-left: 24px;
+  }
+  .msg-content a.mask-link {
+    color: var(--link);
+    text-decoration: none;
+  }
+  .msg-content a.mask-link:hover { text-decoration: underline; }
+  .msg-content .spoiler {
+    background: #1e1f22;
+    color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+  .msg-content .spoiler.revealed {
+    background: #2b2d31;
+    color: inherit;
+  }
+  .preview-shell {
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 12px;
+    min-height: 320px;
+  }
+  .hint {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+  .hint code { color: #f0b132; }
+  select#authorPreset, input#authorName, input#avatarColor {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+  .preview-header-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1 class="title">Discord Announcement Editor</h1>
+  <div class="subtitle">Write and format announcements with Discord markdown, then copy the raw text straight into Discord. Preview updates live.</div>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>Compose</h2>
+      <div class="toolbar" id="toolbar">
+        <span class="group-label">Text style</span>
+        <button data-action="wrap" data-before="**" data-after="**" title="Bold">B</button>
+        <button data-action="wrap" data-before="*" data-after="*" title="Italic"><i>i</i></button>
+        <button data-action="wrap" data-before="***" data-after="***" title="Bold Italic"><b><i>BI</i></b></button>
+        <button data-action="wrap" data-before="__" data-after="__" title="Underline"><u>U</u></button>
+        <button data-action="wrap" data-before="~~" data-after="~~" title="Strikethrough"><s>S</s></button>
+        <button data-action="wrap" data-before="||" data-after="||" title="Spoiler">Spoiler</button>
+
+        <span class="group-label">Code</span>
+        <button data-action="wrap" data-before="`" data-after="`" title="Inline code">Code</button>
+        <button data-action="block" data-before="```&#10;" data-after="&#10;```" title="Code block">Code Block</button>
+
+        <span class="group-label">Blocks</span>
+        <button data-action="line-prefix" data-prefix="&gt; " title="Blockquote (line)">Quote</button>
+        <button data-action="whole-prefix" data-prefix="&gt;&gt;&gt; " title="Blockquote (rest of message)">Quote All</button>
+        <button data-action="line-prefix" data-prefix="# " title="Header 1"># H1</button>
+        <button data-action="line-prefix" data-prefix="## " title="Header 2">## H2</button>
+        <button data-action="line-prefix" data-prefix="### " title="Header 3">### H3</button>
+        <button data-action="line-prefix" data-prefix="-# " title="Subtext (small gray text)">-# Subtext</button>
+
+        <span class="group-label">Lists &amp; links</span>
+        <button data-action="line-prefix" data-prefix="- " title="Bullet list">• List</button>
+        <button data-action="numbered-list" title="Numbered list">1. List</button>
+        <button data-action="link" title="Masked link (bots/embeds only)">Link</button>
+      </div>
+      <textarea id="editor" placeholder="Type your announcement here...">**Server Update — v1.2**
+We just shipped some new stuff. Here's what changed:
+
+- Fixed the *login* bug
+- Added __dark mode__
+- Improved performance by ~~10%~~ 25%
+
+> Restart your client to get the update.
+
+||Secret patch notes coming soon||</textarea>
+      <div class="editor-actions">
+        <button id="copyBtn">Copy raw text</button>
+        <button class="secondary" id="clearBtn">Clear</button>
+        <span id="copyStatus">Copied!</span>
+      </div>
+      <div class="hint">
+        Select text, then click a button to wrap it. Line/block buttons apply to whichever lines your cursor or selection touches.
+        <br><code>Quote All</code> and masked <code>[links](url)</code> only render specially for bots/webhooks or inside embeds — in a normal user message Discord shows them as plain text.
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Live Preview</h2>
+      <div class="preview-header-controls">
+        <input id="authorName" type="text" value="Announcements" size="16" />
+      </div>
+      <div class="preview-shell">
+        <div class="discord-message">
+          <div class="avatar"></div>
+          <div class="msg-body">
+            <div class="msg-meta">
+              <span class="msg-author" id="previewAuthor">Announcements</span>
+              <span class="msg-time" id="previewTime"></span>
+            </div>
+            <div class="msg-content" id="previewContent"></div>
+          </div>
+        </div>
+      </div>
+      <div class="hint">This is an approximation of Discord's renderer for editing purposes — always double-check the real message once posted.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const editor = document.getElementById('editor');
+const previewContent = document.getElementById('previewContent');
+const previewAuthor = document.getElementById('previewAuthor');
+const previewTime = document.getElementById('previewTime');
+const authorName = document.getElementById('authorName');
+const copyBtn = document.getElementById('copyBtn');
+const clearBtn = document.getElementById('clearBtn');
+const copyStatus = document.getElementById('copyStatus');
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Render an approximation of Discord markdown to HTML for the preview pane.
+function renderDiscordMarkdown(raw) {
+  const codeBlocks = [];
+  const inlineCodes = [];
+
+  let text = raw.replace(/```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(escapeHtml(code.replace(/\n$/, '')));
+    return ` CODEBLOCK${idx} `;
+  });
+
+  text = text.replace(/`([^`\n]+)`/g, (m, code) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(escapeHtml(code));
+    return ` INLINECODE${idx} `;
+  });
+
+  text = escapeHtml(text);
+
+  const lines = text.split('\n');
+  const htmlLines = [];
+  let listBuffer = null; // {type: 'ul'|'ol', items: []}
+  let quoteBuffer = null;
+  let quoteAllMode = false;
+  let quoteAllBuffer = [];
+
+  function flushList() {
+    if (listBuffer) {
+      const tag = listBuffer.type;
+      htmlLines.push(`<${tag}>${listBuffer.items.map(i => `<li>${i}</li>`).join('')}</${tag}>`);
+      listBuffer = null;
+    }
+  }
+  function flushQuote() {
+    if (quoteBuffer) {
+      htmlLines.push(`<blockquote>${quoteBuffer.join('<br>')}</blockquote>`);
+      quoteBuffer = null;
+    }
+  }
+
+  for (let line of lines) {
+    if (quoteAllMode) {
+      quoteAllBuffer.push(line);
+      continue;
+    }
+
+    const quoteAllMatch = line.match(/^&gt;&gt;&gt; ?(.*)$/);
+    if (quoteAllMatch) {
+      flushList(); flushQuote();
+      quoteAllMode = true;
+      quoteAllBuffer.push(quoteAllMatch[1]);
+      continue;
+    }
+
+    const quoteMatch = line.match(/^&gt; ?(.*)$/);
+    if (quoteMatch) {
+      flushList();
+      if (!quoteBuffer) quoteBuffer = [];
+      quoteBuffer.push(inlineFormat(quoteMatch[1]));
+      continue;
+    } else {
+      flushQuote();
+    }
+
+    const subtextMatch = line.match(/^-# (.*)$/);
+    if (subtextMatch) {
+      flushList();
+      htmlLines.push(`<span class="subtext">${inlineFormat(subtextMatch[1])}</span>`);
+      continue;
+    }
+
+    const h1 = line.match(/^# (.*)$/);
+    const h2 = line.match(/^## (.*)$/);
+    const h3 = line.match(/^### (.*)$/);
+    if (h1) { flushList(); htmlLines.push(`<h1>${inlineFormat(h1[1])}</h1>`); continue; }
+    if (h2) { flushList(); htmlLines.push(`<h2>${inlineFormat(h2[1])}</h2>`); continue; }
+    if (h3) { flushList(); htmlLines.push(`<h3>${inlineFormat(h3[1])}</h3>`); continue; }
+
+    const bulletMatch = line.match(/^[-*] (.*)$/);
+    if (bulletMatch) {
+      if (!listBuffer || listBuffer.type !== 'ul') { flushList(); listBuffer = { type: 'ul', items: [] }; }
+      listBuffer.items.push(inlineFormat(bulletMatch[1]));
+      continue;
+    }
+    const numberedMatch = line.match(/^\d+\. (.*)$/);
+    if (numberedMatch) {
+      if (!listBuffer || listBuffer.type !== 'ol') { flushList(); listBuffer = { type: 'ol', items: [] }; }
+      listBuffer.items.push(inlineFormat(numberedMatch[1]));
+      continue;
+    }
+    flushList();
+
+    if (line.trim() === '') {
+      htmlLines.push('');
+    } else {
+      htmlLines.push(inlineFormat(line));
+    }
+  }
+  flushList();
+  flushQuote();
+  if (quoteAllMode) {
+    htmlLines.push(`<blockquote>${quoteAllBuffer.map(inlineFormat).join('<br>')}</blockquote>`);
+  }
+
+  let html = htmlLines.join('\n');
+
+  html = html.replace(/ CODEBLOCK(\d+) /g, (m, idx) => `<pre>${codeBlocks[idx]}</pre>`);
+  html = html.replace(/ INLINECODE(\d+) /g, (m, idx) => `<code class="inline">${inlineCodes[idx]}</code>`);
+
+  return html;
+}
+
+function inlineFormat(str) {
+  let s = str;
+  // Masked links [text](url)
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a class="mask-link" href="$2" target="_blank" rel="noopener">$1</a>');
+  // Bold italic ***text***
+  s = s.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+  // Underline italic __*text*__
+  s = s.replace(/__\*([^*]+)\*__/g, '<u><em>$1</em></u>');
+  // Bold **text**
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Underline __text__
+  s = s.replace(/__([^_]+)__/g, '<u>$1</u>');
+  // Strikethrough ~~text~~
+  s = s.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+  // Spoiler ||text||
+  s = s.replace(/\|\|([^|]+)\|\|/g, '<span class="spoiler" onclick="this.classList.toggle(\'revealed\')">$1</span>');
+  // Italic *text* or _text_
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  s = s.replace(/(^|[^\w])_([^_]+)_(?!\w)/g, '$1<em>$2</em>');
+  return s;
+}
+
+function updatePreview() {
+  previewContent.innerHTML = renderDiscordMarkdown(editor.value);
+  previewAuthor.textContent = authorName.value || 'Announcements';
+  const now = new Date();
+  previewTime.textContent = 'Today at ' + now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+editor.addEventListener('input', updatePreview);
+authorName.addEventListener('input', updatePreview);
+
+// Toolbar logic
+document.getElementById('toolbar').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const action = btn.dataset.action;
+  editor.focus();
+
+  if (action === 'wrap' || action === 'block') {
+    const before = btn.dataset.before;
+    const after = btn.dataset.after;
+    wrapSelection(before, after);
+  } else if (action === 'line-prefix') {
+    applyLinePrefix(btn.dataset.prefix);
+  } else if (action === 'whole-prefix') {
+    applyWholePrefix(btn.dataset.prefix);
+  } else if (action === 'numbered-list') {
+    applyNumberedList();
+  } else if (action === 'link') {
+    insertLink();
+  }
+  updatePreview();
+});
+
+function wrapSelection(before, after) {
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const value = editor.value;
+  const selected = value.slice(start, end) || 'text';
+  const newValue = value.slice(0, start) + before + selected + after + value.slice(end);
+  editor.value = newValue;
+  editor.selectionStart = start + before.length;
+  editor.selectionEnd = start + before.length + selected.length;
+  editor.focus();
+}
+
+function getSelectedLineRange() {
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const value = editor.value;
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+  let lineEnd = value.indexOf('\n', end);
+  if (lineEnd === -1) lineEnd = value.length;
+  return { lineStart, lineEnd, value };
+}
+
+function applyLinePrefix(prefix) {
+  const { lineStart, lineEnd, value } = getSelectedLineRange();
+  const block = value.slice(lineStart, lineEnd);
+  const newBlock = block.split('\n').map(l => prefix + l).join('\n');
+  editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
+  editor.selectionStart = lineStart;
+  editor.selectionEnd = lineStart + newBlock.length;
+}
+
+function applyWholePrefix(prefix) {
+  const { lineStart, lineEnd, value } = getSelectedLineRange();
+  const block = value.slice(lineStart, lineEnd);
+  const newBlock = prefix + block;
+  editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
+  editor.selectionStart = lineStart;
+  editor.selectionEnd = lineStart + newBlock.length;
+}
+
+function applyNumberedList() {
+  const { lineStart, lineEnd, value } = getSelectedLineRange();
+  const block = value.slice(lineStart, lineEnd);
+  const newBlock = block.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n');
+  editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
+  editor.selectionStart = lineStart;
+  editor.selectionEnd = lineStart + newBlock.length;
+}
+
+function insertLink() {
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const value = editor.value;
+  const selected = value.slice(start, end) || 'link text';
+  const snippet = `[${selected}](https://example.com)`;
+  editor.value = value.slice(0, start) + snippet + value.slice(end);
+  editor.selectionStart = start + snippet.indexOf('https://');
+  editor.selectionEnd = editor.selectionStart + 'https://example.com'.length;
+  editor.focus();
+}
+
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(editor.value);
+  } catch (e) {
+    editor.select();
+    document.execCommand('copy');
+  }
+  copyStatus.classList.add('show');
+  setTimeout(() => copyStatus.classList.remove('show'), 1200);
+});
+
+clearBtn.addEventListener('click', () => {
+  if (confirm('Clear the editor?')) {
+    editor.value = '';
+    updatePreview();
+  }
+});
+
+updatePreview();
+</script>
+</body>
+</html>
