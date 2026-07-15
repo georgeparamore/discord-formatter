@@ -291,6 +291,64 @@
     margin-bottom: 12px;
     flex-wrap: wrap;
   }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    width: 360px;
+    max-width: 90vw;
+  }
+  .modal-box h3 {
+    margin: 0 0 14px;
+    color: var(--header);
+    font-size: 16px;
+  }
+  .modal-field { margin-bottom: 12px; }
+  .modal-field label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .modal-field input {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 14px;
+  }
+  .modal-field input:focus { outline: 1px solid var(--accent); }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .modal-actions button {
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+  }
+  .modal-actions button.primary { background: var(--accent); color: white; }
+  .modal-actions button.primary:hover { background: var(--accent-hover); }
+  .modal-actions button.cancel { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .modal-actions button.cancel:hover { background: var(--bg-tertiary); }
 </style>
 </head>
 <body>
@@ -397,6 +455,24 @@ We just shipped some new stuff. Here's what changed:
         </div>
       </div>
       <div class="hint">This is an approximation of Discord's renderer for editing purposes — always double-check the real message once posted.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="linkModal">
+  <div class="modal-box">
+    <h3 id="linkModalTitle">Insert Link</h3>
+    <div class="modal-field" id="linkModalTextField">
+      <label for="linkModalText">Link text</label>
+      <input type="text" id="linkModalText" placeholder="link text" />
+    </div>
+    <div class="modal-field">
+      <label for="linkModalUrl">URL</label>
+      <input type="text" id="linkModalUrl" placeholder="https://example.com" />
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" id="linkModalCancel">Cancel</button>
+      <button class="primary" id="linkModalOk">OK</button>
     </div>
   </div>
 </div>
@@ -673,9 +749,9 @@ function handleToolbarClick(e) {
   } else if (action === 'numbered-list') {
     applyNumberedList();
   } else if (action === 'link') {
-    insertLink();
+    openLinkModal('link');
   } else if (action === 'suppress-embed') {
-    wrapSelection('<', '>');
+    openLinkModal('suppress');
   } else if (action === 'ansi-fg' || action === 'ansi-bg' || action === 'ansi-mod') {
     wrapAnsi(btn.dataset.code);
   }
@@ -776,17 +852,67 @@ function wrapAnsi(code) {
   editor.focus();
 }
 
-function insertLink() {
+// Link / Suppress Embed popup
+const linkModal = document.getElementById('linkModal');
+const linkModalTitle = document.getElementById('linkModalTitle');
+const linkModalTextField = document.getElementById('linkModalTextField');
+const linkModalText = document.getElementById('linkModalText');
+const linkModalUrl = document.getElementById('linkModalUrl');
+let pendingLinkAction = null;
+
+function openLinkModal(type) {
   const start = editor.selectionStart;
   const end = editor.selectionEnd;
-  const value = editor.value;
-  const selected = value.slice(start, end) || 'link text';
-  const snippet = `[${selected}](https://example.com)`;
-  editor.value = value.slice(0, start) + snippet + value.slice(end);
-  editor.selectionStart = start + snippet.indexOf('https://');
-  editor.selectionEnd = editor.selectionStart + 'https://example.com'.length;
-  editor.focus();
+  const selectedText = editor.value.slice(start, end);
+  pendingLinkAction = { type, start, end };
+
+  if (type === 'link') {
+    linkModalTitle.textContent = 'Insert Link';
+    linkModalTextField.style.display = '';
+    linkModalText.value = selectedText;
+    linkModalUrl.value = '';
+  } else {
+    linkModalTitle.textContent = 'Suppress Embed';
+    linkModalTextField.style.display = 'none';
+    linkModalUrl.value = /^https?:\/\//i.test(selectedText) ? selectedText : '';
+  }
+
+  linkModal.classList.add('open');
+  linkModalUrl.focus();
 }
+
+function closeLinkModal() {
+  linkModal.classList.remove('open');
+  pendingLinkAction = null;
+}
+
+function confirmLinkModal() {
+  if (!pendingLinkAction) return;
+  const { type, start, end } = pendingLinkAction;
+  const url = linkModalUrl.value.trim();
+  if (!url) { linkModalUrl.focus(); return; }
+
+  const value = editor.value;
+  const snippet = type === 'link'
+    ? `[${linkModalText.value.trim() || 'link text'}](${url})`
+    : `<${url}>`;
+
+  editor.value = value.slice(0, start) + snippet + value.slice(end);
+  editor.selectionStart = editor.selectionEnd = start + snippet.length;
+  editor.focus();
+  updatePreview();
+  closeLinkModal();
+}
+
+document.getElementById('linkModalCancel').addEventListener('click', closeLinkModal);
+document.getElementById('linkModalOk').addEventListener('click', confirmLinkModal);
+linkModal.addEventListener('click', (e) => { if (e.target === linkModal) closeLinkModal(); });
+[linkModalUrl, linkModalText].forEach((input) => {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirmLinkModal();
+    if (e.key === 'Escape') closeLinkModal();
+  });
+});
 
 copyBtn.addEventListener('click', async () => {
   try {
