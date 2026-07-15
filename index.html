@@ -556,8 +556,8 @@ function applyLinePrefix(prefix) {
   const block = value.slice(lineStart, lineEnd);
   const newBlock = block.split('\n').map(l => prefix + l).join('\n');
   editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
-  editor.selectionStart = lineStart;
-  editor.selectionEnd = lineStart + newBlock.length;
+  editor.selectionStart = editor.selectionEnd = lineStart + newBlock.length;
+  editor.focus();
 }
 
 function applyWholePrefix(prefix) {
@@ -565,8 +565,8 @@ function applyWholePrefix(prefix) {
   const block = value.slice(lineStart, lineEnd);
   const newBlock = prefix + block;
   editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
-  editor.selectionStart = lineStart;
-  editor.selectionEnd = lineStart + newBlock.length;
+  editor.selectionStart = editor.selectionEnd = lineStart + newBlock.length;
+  editor.focus();
 }
 
 function applyNumberedList() {
@@ -574,8 +574,8 @@ function applyNumberedList() {
   const block = value.slice(lineStart, lineEnd);
   const newBlock = block.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n');
   editor.value = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
-  editor.selectionStart = lineStart;
-  editor.selectionEnd = lineStart + newBlock.length;
+  editor.selectionStart = editor.selectionEnd = lineStart + newBlock.length;
+  editor.focus();
 }
 
 function insertLink() {
